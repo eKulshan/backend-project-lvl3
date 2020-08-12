@@ -9,5 +9,7 @@
 ```
 make install // install depencies
 npm link // run command in project directory to install page-loader
-page-lodaer -h // type in command line for help info about usage of page-loader
+page-lodaer -h // help info about usage of page-loader
 ```
+
+[simple page download![asciicast](https://asciinema.org/a/YmvSMh800mw94MljRW5lynHmW.svg)](https://asciinema.org/a/YmvSMh800mw94MljRW5lynHmW)

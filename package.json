@@ -1,8 +1,12 @@
 {
   "name": "page-loader",
   "version": "1.0.0",
+  "bin": {
+    "page-loader": "bin/page-loader.js"
+  },
   "description": "utility that downloads a page from the Internet",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "npx -n --experimental-vm-modules jest"
   },
