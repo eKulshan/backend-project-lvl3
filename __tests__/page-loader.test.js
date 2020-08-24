@@ -14,24 +14,44 @@ const __filename = fileURLToPath(import.meta.url); // eslint-disable-line no-und
 const __dirname = dirname(__filename); // eslint-disable-line no-underscore-dangle
 const getFixturePath = (filename) => path.join(__dirname, '..', '__fixtures__', filename);
 
-let expected;
+let html;
+let expectedHTML;
+let expectedJPG;
+let expectedJS;
+let expectedCSS;
 let tempDir;
 beforeAll(async () => {
-  expected = await fs.readFile(getFixturePath('page-loader-testpage.html'), 'utf-8');
+  html = await fs.readFile(getFixturePath('mypage.html'), 'utf-8');
+  expectedHTML = await fs.readFile(getFixturePath('mypageDownloaded.html'), 'utf-8');
+  expectedJS = await fs.readFile(getFixturePath('./assets/script.js'), 'utf-8');
+  expectedCSS = await fs.readFile(getFixturePath('./assets/style.css'), 'utf-8');
+  expectedJPG = await fs.readFile(getFixturePath('./assets/logo.jpg'));
 });
 
 beforeEach(async () => {
   tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'page-loader-'));
 });
 
-test('page-loader succsses', async () => {
-  nock('https://hexlet.io')
-    .get('/courses')
-    .reply(200, expected);
-  const url = 'https://hexlet.io/courses';
+test('load page with assets', async () => {
+  nock('https://mypage.ru')
+    .get('/')
+    .reply(200, html)
+    .get('/assets/script.js')
+    .reply(200, expectedJS)
+    .get('/assets/style.css')
+    .reply(200, expectedCSS)
+    .get('/assets/logo.jpg')
+    .reply(200, expectedJPG);
+  const url = 'https://mypage.ru/';
   await pageLoader(url, tempDir);
-  const actual = await fs.readFile(path.join(tempDir, 'hexlet-io-courses.html'), 'utf-8');
-  expect(actual).toBe(expected);
+  const actualHTML = await fs.readFile(path.join(tempDir, 'mypage-ru.html'), 'utf-8');
+  const actualJS = await fs.readFile(path.join(tempDir, 'mypage-ru_files', 'mypage-ru-assets-script.js'), 'utf-8');
+  const actualCSS = await fs.readFile(path.join(tempDir, 'mypage-ru_files', 'mypage-ru-assets-style.css'), 'utf-8');
+  const actualJPG = await fs.readFile(path.join(tempDir, 'mypage-ru_files', 'mypage-ru-assets-logo.jpg'));
+  expect(actualHTML).toBe(expectedHTML);
+  expect(actualJS).toBe(expectedJS);
+  expect(actualCSS).toBe(expectedCSS);
+  expect(actualJPG).toEqual(expectedJPG);
 });
 
 afterEach(async () => {

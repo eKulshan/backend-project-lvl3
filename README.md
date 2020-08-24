@@ -13,3 +13,4 @@ page-lodaer -h // help info about usage of page-loader
 ```
 
 [simple page download![asciicast](https://asciinema.org/a/YmvSMh800mw94MljRW5lynHmW.svg)](https://asciinema.org/a/YmvSMh800mw94MljRW5lynHmW)
+[download page with assets![asciicast](https://asciinema.org/a/WhFmVH03X6CtGNl4RGJqO0DX2.svg)](https://asciinema.org/a/WhFmVH03X6CtGNl4RGJqO0DX2)
