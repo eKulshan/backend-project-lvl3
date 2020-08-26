@@ -2,6 +2,10 @@ import fs from 'fs/promises';
 import path from 'path';
 import axios from 'axios';
 import cheerio from 'cheerio';
+import debug from 'debug';
+import 'axios-debug-log';
+
+const log = debug('page-loader');
 
 const makeName = (str, ext = '') => {
   const name = str.split(/[^\w]/g).filter((n) => n).join('-');
@@ -10,6 +14,7 @@ const makeName = (str, ext = '') => {
 
 const pageLoader = (urlForDownload, downloadingPath) => {
   const url = new URL(urlForDownload);
+  log('requested page:', urlForDownload);
   const pageName = makeName(url.hostname.concat(url.pathname), '.html');
   const fullPathToPage = path.resolve(downloadingPath, pageName);
   const assetNames = [];
@@ -57,17 +62,3 @@ const pageLoader = (urlForDownload, downloadingPath) => {
 };
 
 export default pageLoader;
-
-/*
-парсим ссылку в правильный ЮРЛ объект
-получаем имя файла
-получаем полный путь для записи файла
-делаем запрос
-получаем ответ
-пишем данные из ответа в переменную, пишем данные в файл, парсим данные через чирио
-ищем ссылки на локальные ресурсы и собираем их в массив
-если массив пуст, то завершаемся
-создаем директорию для ресурсов, превращаем массив со ссылками в массив промисов-запросов к ресурсам
-ждем решения всех промисов, после пишем все в файлы с правильными именами и расширениями
-меняем все ссылки в скачанном файле так, чтобы они указывали на локальные скачанные ресурсы
-*/
