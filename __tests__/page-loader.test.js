@@ -20,16 +20,14 @@ let expectedJPG;
 let expectedJS;
 let expectedCSS;
 let tempDir;
+
 beforeAll(async () => {
+  tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'page-loader-'));
   html = await fs.readFile(getFixturePath('mypage.html'), 'utf-8');
   expectedHTML = await fs.readFile(getFixturePath('mypageDownloaded.html'), 'utf-8');
   expectedJS = await fs.readFile(getFixturePath('./assets/script.js'), 'utf-8');
   expectedCSS = await fs.readFile(getFixturePath('./assets/style.css'), 'utf-8');
   expectedJPG = await fs.readFile(getFixturePath('./assets/logo.jpg'));
-});
-
-beforeEach(async () => {
-  tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'page-loader-'));
 });
 
 test('load page with assets', async () => {
@@ -54,6 +52,22 @@ test('load page with assets', async () => {
   expect(actualJPG).toEqual(expectedJPG);
 });
 
-afterEach(async () => {
+test('http request fail', async () => {
+  nock('https://mypage.ru')
+    .get('/nonExistentPage')
+    .reply(404);
+  const url = 'https://mypage.ru/nonExistentPage';
+  await expect(pageLoader(url, tempDir)).rejects.toThrow();
+});
+
+test('fs access fail', async () => {
+  nock('https://mypage.ru')
+    .get('/')
+    .reply(200, html);
+  const url = 'https://mypage.ru/';
+  await expect(pageLoader(url, tempDir)).rejects.toThrow();
+});
+
+afterAll(async () => {
   fs.rmdir(tempDir, { recursive: true });
 });

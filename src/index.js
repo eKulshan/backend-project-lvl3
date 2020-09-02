@@ -1,64 +1,52 @@
 import fs from 'fs/promises';
 import path from 'path';
 import axios from 'axios';
-import cheerio from 'cheerio';
 import debug from 'debug';
+import Listr from 'listr';
 import 'axios-debug-log';
+
+import getAssetsLinksMakeThemLocal from './htmlHandler.js';
+import makeNameFromUrl from './utils.js';
 
 const log = debug('page-loader');
 
-const makeName = (str, ext = '') => {
-  const name = str.split(/[^\w]/g).filter((n) => n).join('-');
-  return name.concat(ext);
+const loadAsset = (link, responseType, assetDirName) => axios.get(link, { responseType })
+  .then(({ data }) => {
+    const assetName = makeNameFromUrl(link, 'asset');
+    return fs.writeFile(path.join(assetDirName, assetName), data);
+  });
+
+const startAssetsLoading = (links, assetDirPath) => {
+  const data = links.map(({ link, responseType }) => ({
+    title: `${link}`, task: () => loadAsset(link, responseType, assetDirPath),
+  }));
+
+  const tasks = new Listr(data, { concurrent: true, exitOnError: false });
+  return tasks.run();
 };
 
-const pageLoader = (urlForDownload, downloadingPath) => {
-  const url = new URL(urlForDownload);
-  log('requested page:', urlForDownload);
-  const pageName = makeName(url.hostname.concat(url.pathname), '.html');
-  const fullPathToPage = path.resolve(downloadingPath, pageName);
-  const assetNames = [];
-  const assetsDirName = makeName(url.hostname.concat(url.pathname), '_files');
-  const page = axios.get(url.href)
-    .then((response) => {
-      const html = response.data;
-      const promises = [];
-      const $ = cheerio.load(html, { decodeEntities: false });
-      const assetTypes = [
-        { type: 'img', property: 'src', responseType: 'arraybuffer' },
-        { type: 'script', property: 'src', responseType: 'text' },
-        { type: 'link', property: 'href', responseType: 'text' },
-      ];
-      assetTypes.forEach((assetType) => {
-        $(assetType.type).each((i, elem) => {
-          const assetUrl = new URL($(elem).attr(assetType.property), url);
-          if (assetUrl.hostname === url.hostname) {
-            const assetExt = path.extname(assetUrl.pathname);
-            const assetName = makeName(url.hostname.concat(assetUrl.pathname).replace(assetExt, ''), assetExt);
-            promises.push(axios.get(assetUrl.href, { responseType: assetType.responseType }));
-            assetNames.push(assetName);
-            $(elem).attr(assetType.property, path.join(assetsDirName, assetName));
-          }
-        });
-      });
-      const changedHtml = $.html();
-      fs.mkdir(path.resolve(downloadingPath, assetsDirName));
-      fs.writeFile(fullPathToPage, changedHtml);
-      return Promise.all(promises);
-    })
-    .then((responses) => {
-      const promises = [];
-      const assetsDirPath = path.resolve(downloadingPath, assetsDirName);
-      const assetsData = responses.map((response) => response.data);
-      for (let i = 0; i < assetNames.length; i += 1) {
-        const fileName = assetNames[i];
-        const data = assetsData[i];
-        promises.push(fs.writeFile(path.join(assetsDirPath, fileName), data));
-      }
-      return Promise.all(promises);
-    })
-    .catch((error) => console.log(error));
-  return page;
+const pageLoader = (requestedUrl, outputDir) => {
+  const htmlFileName = makeNameFromUrl(requestedUrl, 'html');
+  const htmlFilePath = path.resolve(outputDir, htmlFileName);
+  const assetDirName = makeNameFromUrl(requestedUrl, 'assetDir');
+  const assetDirPath = path.resolve(outputDir, assetDirName);
+
+  return axios.get(requestedUrl)
+    .then(({ data: html }) => getAssetsLinksMakeThemLocal(html, requestedUrl, assetDirName))
+    .then(({ links, changedHtml }) => fs.writeFile(htmlFilePath, changedHtml, 'utf-8')
+      .then(() => {
+        if (links.length === 0) {
+          return log(`There is no assets for ${requestedUrl}`);
+        }
+        log(`Assets links to download: ${links}`);
+        log(`Assets folder ${assetDirName} was created in ${outputDir}`);
+        return fs.mkdir(assetDirPath)
+          .then(() => startAssetsLoading(links, assetDirPath));
+      })
+      .then(() => htmlFileName))
+    .catch((e) => {
+      throw new Error(`Download failed. Reason: ${e.message}`);
+    });
 };
 
 export default pageLoader;

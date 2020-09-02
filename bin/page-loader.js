@@ -10,6 +10,11 @@ program
   .arguments('<url>')
   .option('-o, --output [pathToDownload]', 'define path to download page', process.cwd())
   .action((url) => {
-    pageLoader(url, program.output);
+    pageLoader(url, program.output)
+      .then((htmlFileName) => console.log(`Page was downloaded as ${htmlFileName} in ${program.output}`))
+      .catch((e) => {
+        console.error(e.message);
+        process.exit(1);
+      });
   });
 program.parse(process.argv);
