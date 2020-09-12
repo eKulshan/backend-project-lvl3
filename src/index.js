@@ -10,15 +10,15 @@ import makeNameFromUrl from './utils.js';
 
 const log = debug('page-loader');
 
-const loadAsset = (link, responseType, assetDirName) => axios.get(link, { responseType })
+const loadAsset = (link, assetDirName) => axios.get(link, { responseType: 'arraybuffer' })
   .then(({ data }) => {
     const assetName = makeNameFromUrl(link, 'asset');
     return fs.writeFile(path.join(assetDirName, assetName), data);
   });
 
 const startAssetsLoading = (links, assetDirPath) => {
-  const data = links.map(({ link, responseType }) => ({
-    title: `${link}`, task: () => loadAsset(link, responseType, assetDirPath),
+  const data = links.map((link) => ({
+    title: `${link}`, task: () => loadAsset(link, assetDirPath),
   }));
 
   const tasks = new Listr(data, { concurrent: true, exitOnError: false });
@@ -30,23 +30,21 @@ const pageLoader = (requestedUrl, outputDir) => {
   const htmlFilePath = path.resolve(outputDir, htmlFileName);
   const assetDirName = makeNameFromUrl(requestedUrl, 'assetDir');
   const assetDirPath = path.resolve(outputDir, assetDirName);
+  let links;
+  let changedHtml;
 
   return axios.get(requestedUrl)
     .then(({ data: html }) => getAssetsLinksMakeThemLocal(html, requestedUrl, assetDirName))
-    .then(({ links, changedHtml }) => fs.writeFile(htmlFilePath, changedHtml, 'utf-8')
-      .then(() => {
-        if (links.length === 0) {
-          return log(`There is no assets for ${requestedUrl}`);
-        }
-        log(`Assets links to download: ${links}`);
-        log(`Assets folder ${assetDirName} was created in ${outputDir}`);
-        return fs.mkdir(assetDirPath)
-          .then(() => startAssetsLoading(links, assetDirPath));
-      })
-      .then(() => htmlFileName))
-    .catch((e) => {
-      throw new Error(`Download failed. Reason: ${e.message}`);
-    });
+    .then((result) => {
+      ({ links, changedHtml } = result);
+      if (links.length === 0) {
+        return log(`There is no assets for ${requestedUrl}`);
+      }
+      return fs.mkdir(assetDirPath, { recursive: true });
+    })
+    .then(() => fs.writeFile(htmlFilePath, changedHtml, 'utf-8'))
+    .then(() => startAssetsLoading(links, assetDirPath))
+    .then(() => htmlFileName);
 };
 
 export default pageLoader;

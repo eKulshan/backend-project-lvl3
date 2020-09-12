@@ -14,20 +14,26 @@ const __filename = fileURLToPath(import.meta.url); // eslint-disable-line no-und
 const __dirname = dirname(__filename); // eslint-disable-line no-underscore-dangle
 const getFixturePath = (filename) => path.join(__dirname, '..', '__fixtures__', filename);
 
-let html;
-let expectedHTML;
+const html = `<html><head><script src="assets/script.js"></script>
+  <link rel="stylesheet" href="assets/style.css">
+  </head><body><img src='assets/logo.jpg' width="200" height="200" alt="Логотип">
+  <img src="https://pbs.twimg.com/media/CFSYsJoWgAAN9OY.jpg" width="200" height="200" alt="Логотип"></body></html>`;
+const expectedHtml = `<html><head><script src="mypage-ru_files/mypage-ru-assets-script.js"></script>
+  <link rel="stylesheet" href="mypage-ru_files/mypage-ru-assets-style.css">
+  </head><body><img src="mypage-ru_files/mypage-ru-assets-logo.jpg" width="200" height="200" alt="Логотип">
+  <img src="https://pbs.twimg.com/media/CFSYsJoWgAAN9OY.jpg" width="200" height="200" alt="Логотип"></body></html>`;
+const expectedJS = 'some javascript code';
+const expectedCSS = 'some css code';
+
 let expectedJPG;
-let expectedJS;
-let expectedCSS;
 let tempDir;
 
 beforeAll(async () => {
-  tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'page-loader-'));
-  html = await fs.readFile(getFixturePath('mypage.html'), 'utf-8');
-  expectedHTML = await fs.readFile(getFixturePath('mypageDownloaded.html'), 'utf-8');
-  expectedJS = await fs.readFile(getFixturePath('./assets/script.js'), 'utf-8');
-  expectedCSS = await fs.readFile(getFixturePath('./assets/style.css'), 'utf-8');
   expectedJPG = await fs.readFile(getFixturePath('./assets/logo.jpg'));
+});
+
+beforeEach(async () => {
+  tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'page-loader-'));
 });
 
 test('load page with assets', async () => {
@@ -46,7 +52,7 @@ test('load page with assets', async () => {
   const actualJS = await fs.readFile(path.join(tempDir, 'mypage-ru_files', 'mypage-ru-assets-script.js'), 'utf-8');
   const actualCSS = await fs.readFile(path.join(tempDir, 'mypage-ru_files', 'mypage-ru-assets-style.css'), 'utf-8');
   const actualJPG = await fs.readFile(path.join(tempDir, 'mypage-ru_files', 'mypage-ru-assets-logo.jpg'));
-  expect(actualHTML).toBe(expectedHTML);
+  expect(actualHTML).toBe(expectedHtml);
   expect(actualJS).toBe(expectedJS);
   expect(actualCSS).toBe(expectedCSS);
   expect(actualJPG).toEqual(expectedJPG);
@@ -58,16 +64,4 @@ test('http request fail', async () => {
     .reply(404);
   const url = 'https://mypage.ru/nonExistentPage';
   await expect(pageLoader(url, tempDir)).rejects.toThrow();
-});
-
-test('fs access fail', async () => {
-  nock('https://mypage.ru')
-    .get('/')
-    .reply(200, html);
-  const url = 'https://mypage.ru/';
-  await expect(pageLoader(url, tempDir)).rejects.toThrow();
-});
-
-afterAll(async () => {
-  fs.rmdir(tempDir, { recursive: true });
 });
