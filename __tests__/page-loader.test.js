@@ -6,7 +6,7 @@ import os from 'os';
 import { fileURLToPath } from 'url';
 import path, { dirname } from 'path';
 import nock from 'nock';
-import pageLoader from '../src/index.js';
+import downloadPage from '../src/index.js';
 
 nock.disableNetConnect();
 
@@ -27,6 +27,7 @@ const expectedCSS = 'some css code';
 
 let expectedJPG;
 let tempDir;
+let assetDirPath;
 
 beforeAll(async () => {
   expectedJPG = await fs.readFile(getFixturePath('./assets/logo.jpg'));
@@ -34,10 +35,12 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'page-loader-'));
+  assetDirPath = path.join(tempDir, 'mypage-ru_files');
 });
 
 test('load page with assets', async () => {
-  nock('https://mypage.ru')
+  const url = 'https://mypage.ru';
+  nock(url)
     .get('/')
     .reply(200, html)
     .get('/assets/script.js')
@@ -46,12 +49,11 @@ test('load page with assets', async () => {
     .reply(200, expectedCSS)
     .get('/assets/logo.jpg')
     .reply(200, expectedJPG);
-  const url = 'https://mypage.ru/';
-  await pageLoader(url, tempDir);
+  await downloadPage(url, tempDir);
   const actualHTML = await fs.readFile(path.join(tempDir, 'mypage-ru.html'), 'utf-8');
-  const actualJS = await fs.readFile(path.join(tempDir, 'mypage-ru_files', 'mypage-ru-assets-script.js'), 'utf-8');
-  const actualCSS = await fs.readFile(path.join(tempDir, 'mypage-ru_files', 'mypage-ru-assets-style.css'), 'utf-8');
-  const actualJPG = await fs.readFile(path.join(tempDir, 'mypage-ru_files', 'mypage-ru-assets-logo.jpg'));
+  const actualJS = await fs.readFile(path.join(assetDirPath, 'mypage-ru-assets-script.js'), 'utf-8');
+  const actualCSS = await fs.readFile(path.join(assetDirPath, 'mypage-ru-assets-style.css'), 'utf-8');
+  const actualJPG = await fs.readFile(path.join(assetDirPath, 'mypage-ru-assets-logo.jpg'));
   expect(actualHTML).toBe(expectedHtml);
   expect(actualJS).toBe(expectedJS);
   expect(actualCSS).toBe(expectedCSS);
@@ -63,5 +65,5 @@ test('http request fail', async () => {
     .get('/nonExistentPage')
     .reply(404);
   const url = 'https://mypage.ru/nonExistentPage';
-  await expect(pageLoader(url, tempDir)).rejects.toThrow();
+  await expect(downloadPage(url, tempDir)).rejects.toThrow();
 });

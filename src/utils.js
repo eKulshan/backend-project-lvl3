@@ -1,17 +1,15 @@
-import path from 'path';
+import _ from 'lodash';
 
-const formatName = (str) => str.split(/[^\w]/g).filter((n) => n).join('-');
-
-const makeNameFromUrl = (url, fileType) => {
-  const types = {
-    assetDir: ({ host, pathname }) => `${formatName(path.join(host, pathname))}_files`,
-    html: ({ host, pathname }) => `${formatName(path.join(host, pathname))}.html`,
-    asset: ({ host, pathname }) => {
-      const assetExt = path.extname(pathname);
-      return formatName(path.join(host, pathname).replace(assetExt, '')).concat(assetExt);
-    },
-  };
-  return types[fileType](new URL(url));
+const formatName = ({ host, pathname }) => {
+  const formatedHost = host.split(/[.]/g)
+    .join('-');
+  const formatedPathname = pathname.split(/[^\w.]/g)
+    .join('-');
+  return _.trim(formatedHost.concat(formatedPathname), '-');
 };
 
-export default makeNameFromUrl;
+const makeAssetDirName = (url) => `${formatName(url)}_files`;
+const makeHtmlName = (url) => `${formatName(url)}.html`;
+const makeAssetName = (url) => `${formatName(url)}`;
+
+export { makeAssetName, makeHtmlName, makeAssetDirName };

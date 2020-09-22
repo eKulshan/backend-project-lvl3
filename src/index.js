@@ -6,45 +6,42 @@ import Listr from 'listr';
 import 'axios-debug-log';
 
 import getAssetsLinksMakeThemLocal from './htmlHandler.js';
-import makeNameFromUrl from './utils.js';
+import { makeAssetDirName, makeHtmlName } from './utils.js';
 
 const log = debug('page-loader');
 
-const loadAsset = (link, assetDirName) => axios.get(link, { responseType: 'arraybuffer' })
-  .then(({ data }) => {
-    const assetName = makeNameFromUrl(link, 'asset');
-    return fs.writeFile(path.join(assetDirName, assetName), data);
-  });
+const downloadAsset = (assetName, link, assetDirName) => axios.get(link.href, { responseType: 'arraybuffer' })
+  .then(({ data }) => fs.writeFile(path.join(assetDirName, assetName), data));
 
-const startAssetsLoading = (links, assetDirPath) => {
-  const data = links.map((link) => ({
-    title: `${link}`, task: () => loadAsset(link, assetDirPath),
+const downloadAssets = (links, assetDirPath) => {
+  const data = links.map(({ assetName, assetUrl }) => ({
+    title: `${assetUrl}`, task: () => downloadAsset(assetName, assetUrl, assetDirPath),
   }));
 
   const tasks = new Listr(data, { concurrent: true, exitOnError: false });
   return tasks.run();
 };
 
-const pageLoader = (requestedUrl, outputDir) => {
-  const htmlFileName = makeNameFromUrl(requestedUrl, 'html');
+const downloadPage = (requestedUrl, outputDir) => {
+  const url = new URL(requestedUrl);
+  const htmlFileName = makeHtmlName(url);
   const htmlFilePath = path.resolve(outputDir, htmlFileName);
-  const assetDirName = makeNameFromUrl(requestedUrl, 'assetDir');
+  const assetDirName = makeAssetDirName(url);
   const assetDirPath = path.resolve(outputDir, assetDirName);
   let links;
   let changedHtml;
 
-  return axios.get(requestedUrl)
-    .then(({ data: html }) => getAssetsLinksMakeThemLocal(html, requestedUrl, assetDirName))
-    .then((result) => {
-      ({ links, changedHtml } = result);
+  return axios.get(url.href)
+    .then(({ data: html }) => {
+      ({ links, changedHtml } = getAssetsLinksMakeThemLocal(html, url, assetDirName));
       if (links.length === 0) {
-        return log(`There is no assets for ${requestedUrl}`);
+        return log(`There is no assets for ${url}`);
       }
       return fs.mkdir(assetDirPath, { recursive: true });
     })
     .then(() => fs.writeFile(htmlFilePath, changedHtml, 'utf-8'))
-    .then(() => startAssetsLoading(links, assetDirPath))
+    .then(() => downloadAssets(links, assetDirPath))
     .then(() => htmlFileName);
 };
 
-export default pageLoader;
+export default downloadPage;

@@ -1,10 +1,9 @@
 import cheerio from 'cheerio';
 import path from 'path';
-import makeNameFromUrl from './utils.js';
+import { makeAssetName } from './utils.js';
 
-const getAssetLinksMakeThemLocal = (html, requestedUrl, assetDirName) => {
+const getAssetLinksMakeThemLocal = (html, url, assetDirName) => {
   const $ = cheerio.load(html, { decodeEntities: false });
-  const url = new URL(requestedUrl);
 
   const links = [];
 
@@ -15,18 +14,22 @@ const getAssetLinksMakeThemLocal = (html, requestedUrl, assetDirName) => {
   ];
 
   tags.forEach(({ name, property }) => {
-    $(name).each((_, elem) => {
+    const unfilteredLinks = [];
+    $(name).each((_, elem) => unfilteredLinks.push({ elem }));
+    unfilteredLinks.map(({ elem }) => {
       const assetUrl = new URL($(elem).attr(property), url.href);
-
-      if (assetUrl.hostname !== url.hostname) {
-        return;
-      }
-
-      const assetName = makeNameFromUrl(assetUrl, 'asset');
-      links.push(assetUrl.href);
-      $(elem).attr(property, path.join(assetDirName, assetName));
-    });
+      const assetName = makeAssetName(assetUrl);
+      return { elem, assetName, assetUrl };
+    })
+      .filter(({ assetUrl }) => assetUrl.host === url.host)
+      .map(({
+        elem, assetName, assetUrl,
+      }) => {
+        $(elem).attr(property, path.join(assetDirName, assetName));
+        return links.push({ assetName, assetUrl });
+      });
   });
+
   return { changedHtml: $.html(), links };
 };
 

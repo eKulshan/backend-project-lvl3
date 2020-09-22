@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import program from 'commander';
-import pageLoader from '../src/index.js';
+import downloadPage from '../src/index.js';
 
 program
   .name('page-loader')
@@ -10,7 +10,7 @@ program
   .arguments('<url>')
   .option('-o, --output [pathToDownload]', 'define path to download page', process.cwd())
   .action((url) => {
-    pageLoader(url, program.output)
+    downloadPage(url, program.output)
       .then((htmlFileName) => console.log(`Page was downloaded as ${htmlFileName} in ${program.output}`))
       .catch((e) => {
         console.error(e.message);
