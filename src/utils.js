@@ -1,15 +1,12 @@
 import _ from 'lodash';
 
-const formatName = ({ host, pathname }) => {
-  const formatedHost = host.split(/[.]/g)
-    .join('-');
-  const formatedPathname = pathname.split(/[^\w.]/g)
-    .join('-');
+const makeNameFromUrl = ({ host, pathname }) => {
+  const formatedHost = host.replace(/[.]/g, '-');
+  const formatedPathname = pathname.replace(/[^\w.]/g, '-');
   return _.trim(formatedHost.concat(formatedPathname), '-');
 };
 
-const makeAssetDirName = (url) => `${formatName(url)}_files`;
-const makeHtmlName = (url) => `${formatName(url)}.html`;
-const makeAssetName = (url) => `${formatName(url)}`;
+const makeAssetDirName = (url) => `${makeNameFromUrl(url)}_files`;
+const makeHtmlName = (url) => `${makeNameFromUrl(url)}.html`;
 
-export { makeAssetName, makeHtmlName, makeAssetDirName };
+export { makeHtmlName, makeAssetDirName, makeNameFromUrl };

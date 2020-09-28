@@ -5,13 +5,17 @@ import debug from 'debug';
 import Listr from 'listr';
 import 'axios-debug-log';
 
-import getAssetsLinksMakeThemLocal from './htmlHandler.js';
+import prepareAssets from './prepareAssets.js';
 import { makeAssetDirName, makeHtmlName } from './utils.js';
 
 const log = debug('page-loader');
 
-const downloadAsset = (assetName, link, assetDirName) => axios.get(link.href, { responseType: 'arraybuffer' })
-  .then(({ data }) => fs.writeFile(path.join(assetDirName, assetName), data));
+const downloadAsset = (assetName, assetUrl, assetDirName) => axios.get(assetUrl.href, { responseType: 'arraybuffer' })
+  .then(({ data }) => {
+    const assetLoadingPath = path.join(assetDirName, assetName);
+    log(`Asset loading from ${assetUrl.href} to ${assetLoadingPath}`);
+    return fs.writeFile(assetLoadingPath, data);
+  });
 
 const downloadAssets = (links, assetDirPath) => {
   const data = links.map(({ assetName, assetUrl }) => ({
@@ -26,6 +30,8 @@ const downloadPage = (requestedUrl, outputDir) => {
   const url = new URL(requestedUrl);
   const htmlFileName = makeHtmlName(url);
   const htmlFilePath = path.resolve(outputDir, htmlFileName);
+  log(`HtmlFileName: ${htmlFileName}
+  DownloadPath: ${htmlFilePath}`);
   const assetDirName = makeAssetDirName(url);
   const assetDirPath = path.resolve(outputDir, assetDirName);
   let links;
@@ -33,10 +39,7 @@ const downloadPage = (requestedUrl, outputDir) => {
 
   return axios.get(url.href)
     .then(({ data: html }) => {
-      ({ links, changedHtml } = getAssetsLinksMakeThemLocal(html, url, assetDirName));
-      if (links.length === 0) {
-        return log(`There is no assets for ${url}`);
-      }
+      ({ links, changedHtml } = prepareAssets(html, url, assetDirName));
       return fs.mkdir(assetDirPath, { recursive: true });
     })
     .then(() => fs.writeFile(htmlFilePath, changedHtml, 'utf-8'))

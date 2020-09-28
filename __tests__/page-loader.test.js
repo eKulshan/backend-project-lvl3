@@ -25,13 +25,8 @@ const expectedHtml = `<html><head><script src="mypage-ru_files/mypage-ru-assets-
 const expectedJS = 'some javascript code';
 const expectedCSS = 'some css code';
 
-let expectedJPG;
 let tempDir;
 let assetDirPath;
-
-beforeAll(async () => {
-  expectedJPG = await fs.readFile(getFixturePath('./assets/logo.jpg'));
-});
 
 beforeEach(async () => {
   tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'page-loader-'));
@@ -40,6 +35,7 @@ beforeEach(async () => {
 
 test('load page with assets', async () => {
   const url = 'https://mypage.ru';
+  const expectedJPG = await fs.readFile(getFixturePath('./logo.jpg'));
   nock(url)
     .get('/')
     .reply(200, html)
